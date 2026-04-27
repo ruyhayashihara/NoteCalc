@@ -1,0 +1,6 @@
+{
+  "name": "Scratchpad Calculator",
+  "description": "Calculate, take notes, and draw.",
+  "requestFramePermissions": ["clipboard-read", "clipboard-write"],
+  "majorCapabilities": []
+}
