@@ -75,8 +75,8 @@ export const Sidebar = ({ isOpen, onClose, notes, activeNoteId, onSelectNote, on
         <div className="p-4 border-t border-gray-200 bg-gray-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center overflow-hidden">
-               {user?.photoURL && <img src={user.photoURL} alt="Avatar" className="w-8 h-8 rounded-full mr-3 border border-gray-300" />}
-               <span className="truncate text-sm font-medium text-gray-700">{user?.displayName || 'User'}</span>
+               {user?.user_metadata?.avatar_url && <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-8 h-8 rounded-full mr-3 border border-gray-300" />}
+               <span className="truncate text-sm font-medium text-gray-700">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}</span>
             </div>
             <button 
               onClick={onLogout}

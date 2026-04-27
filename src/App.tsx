@@ -1,23 +1,27 @@
 import { useState, useEffect } from 'react';
-import { db, auth, loginWithGoogle, logout, handleFirestoreError, OperationType } from './lib/firebase';
-import { collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, where } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
+import { supabase } from './lib/supabase';
 import { Calculator } from './components/Calculator';
 import { Sidebar } from './components/Sidebar';
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
   const [authInitialized, setAuthInitialized] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [signUpMessage, setSignUpMessage] = useState('');
   const [notes, setNotes] = useState<any[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
       setAuthInitialized(true);
     });
-    return () => unsubscribe();
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -26,81 +30,168 @@ export default function App() {
       return;
     }
 
-    const q = query(
-      collection(db, 'notes'),
-      where('userId', '==', user.uid),
-      orderBy('updatedAt', 'desc')
-    );
+    // Fetch initial notes
+    const fetchNotes = async () => {
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('userid', user.id)
+        .order('updatedat', { ascending: false });
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedNotes = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setNotes(fetchedNotes);
-      if (fetchedNotes.length > 0 && !activeNoteId) {
-        setActiveNoteId(fetchedNotes[0].id);
+      if (error) {
+        console.error('Error fetching notes:', error);
+        return;
       }
-    }, (error) => {
-       handleFirestoreError(error, OperationType.LIST, 'notes');
-    });
 
-    return () => unsubscribe();
+      setNotes(data);
+      if (data.length > 0 && !activeNoteId) {
+        setActiveNoteId(data[0].id);
+      }
+    };
+
+    fetchNotes();
+
+    // Set up real-time subscription for notes
+    const notesChannel = supabase
+      .channel('public:notes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notes', filter: `userid=eq.${user.id}` },
+        (payload) => {
+          console.log('Real-time change received:', payload);
+          if (payload.eventType === 'INSERT') {
+            setNotes(prev => [payload.new, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setNotes(prev => prev.map(note => note.id === payload.new.id ? payload.new : note));
+          } else if (payload.eventType === 'DELETE') {
+            setNotes(prev => prev.filter(note => note.id === payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(notesChannel);
+    };
   }, [user]);
 
-  const activeNote = notes.find(n => n.id === activeNoteId) || null;
+  const activeNote = notes.find((n) => n.id === activeNoteId) || null;
 
   const handleCreateNote = async () => {
-    if (!user) return;
+    if (!user) {
+      console.error('No user logged in');
+      return;
+    }
     try {
-      const newNote = {
-        title: `Note ${new Date().toLocaleDateString()}`,
-        content: '',
-        drawing: '',
-        userId: user.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-      const docRef = await addDoc(collection(db, 'notes'), newNote);
-      setActiveNoteId(docRef.id);
-      setIsSidebarOpen(false);
+      const { data, error } = await supabase
+        .from('notes')
+        .insert([
+          {
+            title: `Note ${new Date().toLocaleDateString()}`,
+            content: '',
+            drawing: '',
+            userid: user.id,
+          },
+        ])
+        .select();
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const newNote = data[0];
+        // Update local state immediately - don't wait for real-time
+        setNotes(prev => [newNote, ...prev]);
+        setActiveNoteId(newNote.id);
+        setIsSidebarOpen(false);
+      }
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'notes');
+      console.error('Error creating note:', error);
     }
   };
 
   const handleSaveNote = async (content: string, drawing: string, explicitTitle?: string) => {
     if (!activeNoteId || !user) return;
     try {
-      const noteRef = doc(db, 'notes', activeNoteId);
-      
       let newTitle = explicitTitle;
       if (!newTitle || newTitle.trim() === '') {
-          // Auto-generate title from first line of content if not empty
-          const lines = content.split('\n').filter(l => l.trim().length > 0);
-          newTitle = lines.length > 0 ? lines[0].substring(0, 30) : activeNote?.title || 'Untitled';
+        const lines = content.split('\n').filter((l) => l.trim().length > 0);
+        newTitle = lines.length > 0 ? lines[0].substring(0, 30) : activeNote?.title || 'Untitled';
       }
 
-      await updateDoc(noteRef, {
-        content,
-        drawing,
-        title: newTitle,
-        updatedAt: serverTimestamp()
-      });
+      const updatedAt = new Date().toISOString();
+
+      const { error } = await supabase
+        .from('notes')
+        .update({ content, drawing, title: newTitle, updatedat: updatedAt })
+        .eq('id', activeNoteId)
+        .eq('userid', user.id);
+
+      if (error) throw error;
+
+      // Update local state immediately - don't wait for real-time
+      setNotes(prev =>
+        prev.map(note =>
+          note.id === activeNoteId
+            ? { ...note, content, drawing, title: newTitle, updatedat: updatedAt }
+            : note
+        )
+      );
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `notes/${activeNoteId}`);
+      console.error('Error saving note:', error);
     }
   };
 
   const handleDeleteNote = async (id: string) => {
     if (!user) return;
     try {
-      await deleteDoc(doc(db, 'notes', id));
+      const { error } = await supabase
+        .from('notes')
+        .delete()
+        .eq('id', id)
+        .eq('userid', user.id);
+
+      if (error) throw error;
+
+      // Update local state immediately - don't wait for real-time
+      setNotes(prev => prev.filter(note => note.id !== id));
       if (activeNoteId === id) {
         setActiveNoteId(null);
       }
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `notes/${id}`);
+      console.error('Error deleting note:', error);
+    }
+  };
+
+  const handleSignUpWithEmail = async () => {
+    try {
+      setSignUpMessage('');
+      console.log('Signing up with:', email);
+      const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+      });
+      if (error) {
+        console.error('Sign up error:', error);
+        setSignUpMessage(`Error: ${error.message}`);
+        return;
+      }
+      console.log('Sign up response:', data);
+      if (data.user) {
+        setSignUpMessage('Account created! You can now sign in.');
+        setEmail('');
+        setPassword('');
+      } else if (data.session) {
+        setSignUpMessage('Account created and signed in!');
+        setEmail('');
+        setPassword('');
+      } else {
+        setSignUpMessage('Account created! Check your email to confirm.');
+        setEmail('');
+        setPassword('');
+      }
+    } catch (error: any) {
+      console.error('Error signing up:', error);
+      setSignUpMessage(`Error: ${error.message}`);
     }
   };
 
@@ -112,17 +203,59 @@ export default function App() {
     return (
       <div className="flex bg-[#f2f3f5] flex-col items-center justify-center min-h-screen p-4">
         <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center">
-            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
-                <span className="text-2xl font-bold">K</span>
+          <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+            <span className="text-2xl font-bold">K</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">Scratchpad</h1>
+          <p className="text-gray-500 mb-8">Calculate, take notes, and draw.</p>
+          <button 
+            onClick={handleSignInWithGoogle}
+            className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 font-medium transition-colors mb-3"
+          >
+            Sign in with Google
+          </button>
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
             </div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">Scratchpad</h1>
-            <p className="text-gray-500 mb-8">Calculate, take notes, and draw.</p>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">or</span>
+            </div>
+          </div>
+          <div className="space-y-3 text-left">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                placeholder="you@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                placeholder="••••••••"
+              />
+            </div>
             <button 
-              onClick={loginWithGoogle}
-              className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 font-medium transition-colors"
+              onClick={handleSignUpWithEmail}
+              disabled={!email || !password}
+              className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-gray-800 hover:bg-gray-900 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign in with Google
+              Sign up with Email
             </button>
+            {signUpMessage && (
+              <p className={`text-sm text-center ${signUpMessage.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>
+                {signUpMessage}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -140,7 +273,7 @@ export default function App() {
           onCreateNote={handleCreateNote}
           onDeleteNote={handleDeleteNote}
           user={user}
-          onLogout={logout}
+          onLogout={handleSignOut}
         />
 
         <main className="flex-1 w-full h-full relative flex flex-col">
@@ -155,20 +288,20 @@ export default function App() {
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full bg-[#f2f3f5] p-6 text-center">
-               <button onClick={() => setIsSidebarOpen(true)} className="absolute top-4 left-4 p-2 text-gray-600 hover:bg-gray-200 rounded-full">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
-               </button>
-               <div className="text-gray-400 mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
-               </div>
-               <h2 className="text-xl font-medium text-gray-700 mb-2">No active scratchpad</h2>
-               <p className="text-gray-500 mb-6">Create a new scratchpad or select one from the menu.</p>
-               <button 
-                 onClick={handleCreateNote}
-                 className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow font-medium transition-colors"
-               >
-                 New Scratchpad
-               </button>
+              <button onClick={() => setIsSidebarOpen(true)} className="absolute top-4 left-4 p-2 text-gray-600 hover:bg-gray-200 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+              </button>
+              <div className="text-gray-400 mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
+              </div>
+              <h2 className="text-xl font-medium text-gray-700 mb-2">No active scratchpad</h2>
+              <p className="text-gray-500 mb-6">Create a new scratchpad or select one from the menu.</p>
+              <button 
+                onClick={handleCreateNote}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow font-medium transition-colors"
+              >
+                New Scratchpad
+              </button>
             </div>
           )}
         </main>
@@ -176,3 +309,25 @@ export default function App() {
     </div>
   );
 }
+
+// Helper functions for auth
+const handleSignInWithGoogle = async () => {
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+    });
+    if (error) throw error;
+    // Note: signInWithOAuth will redirect, so we don't expect to reach here in the same page load
+  } catch (error) {
+    console.error('Error signing in with Google:', error);
+  }
+};
+
+const handleSignOut = async () => {
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error signing out:', error);
+  }
+};
