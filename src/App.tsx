@@ -8,7 +8,8 @@ export default function App() {
   const [authInitialized, setAuthInitialized] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [signUpMessage, setSignUpMessage] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [authMessage, setAuthMessage] = useState({ text: '', type: '' });
   const [notes, setNotes] = useState<any[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -162,36 +163,40 @@ export default function App() {
     }
   };
 
+  const handleSignInWithEmail = async () => {
+    try {
+      setAuthMessage({ text: '', type: '' });
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+      if (error) {
+        setAuthMessage({ text: `Error: ${error.message}`, type: 'error' });
+        return;
+      }
+    } catch (error: any) {
+      setAuthMessage({ text: `Error: ${error.message}`, type: 'error' });
+    }
+  };
+
   const handleSignUpWithEmail = async () => {
     try {
-      setSignUpMessage('');
-      console.log('Signing up with:', email);
+      setAuthMessage({ text: '', type: '' });
       const { data, error } = await supabase.auth.signUp({
         email: email,
         password: password,
       });
       if (error) {
-        console.error('Sign up error:', error);
-        setSignUpMessage(`Error: ${error.message}`);
+        setAuthMessage({ text: `Error: ${error.message}`, type: 'error' });
         return;
       }
-      console.log('Sign up response:', data);
       if (data.user) {
-        setSignUpMessage('Account created! You can now sign in.');
-        setEmail('');
-        setPassword('');
-      } else if (data.session) {
-        setSignUpMessage('Account created and signed in!');
-        setEmail('');
-        setPassword('');
-      } else {
-        setSignUpMessage('Account created! Check your email to confirm.');
+        setAuthMessage({ text: 'Account created! Check your email for confirmation.', type: 'success' });
         setEmail('');
         setPassword('');
       }
     } catch (error: any) {
-      console.error('Error signing up:', error);
-      setSignUpMessage(`Error: ${error.message}`);
+      setAuthMessage({ text: `Error: ${error.message}`, type: 'error' });
     }
   };
 
@@ -208,53 +213,71 @@ export default function App() {
           </div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Scratchpad</h1>
           <p className="text-gray-500 mb-8">Calculate, take notes, and draw.</p>
+          
           <button 
             onClick={handleSignInWithGoogle}
-            className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 font-medium transition-colors mb-3"
+            className="w-full flex justify-center items-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 font-medium transition-colors mb-3"
           >
-            Sign in with Google
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5 mr-2" alt="Google" />
+            Continue with Google
           </button>
-          <div className="relative my-4">
+
+          <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="w-full border-t border-gray-200"></div>
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">or</span>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="px-2 bg-white text-gray-500 font-medium">or continue with email</span>
             </div>
           </div>
-          <div className="space-y-3 text-left">
+
+          <div className="space-y-4 text-left">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 ml-1">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 placeholder="you@example.com"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 ml-1">Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 placeholder="••••••••"
               />
             </div>
+            
             <button 
-              onClick={handleSignUpWithEmail}
+              onClick={isSignUp ? handleSignUpWithEmail : handleSignInWithEmail}
               disabled={!email || !password}
-              className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-gray-800 hover:bg-gray-900 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg text-white bg-blue-600 hover:bg-blue-700 font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98]"
             >
-              Sign up with Email
+              {isSignUp ? 'Create Account' : 'Sign In'}
             </button>
-            {signUpMessage && (
-              <p className={`text-sm text-center ${signUpMessage.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>
-                {signUpMessage}
-              </p>
+
+            {authMessage.text && (
+              <div className={`p-3 rounded-lg text-sm text-center font-medium ${authMessage.type === 'error' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+                {authMessage.text}
+              </div>
             )}
+
+            <div className="pt-4 text-center">
+              <button 
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setAuthMessage({ text: '', type: '' });
+                }}
+                className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+              >
+                {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
