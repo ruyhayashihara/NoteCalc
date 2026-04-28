@@ -20,9 +20,11 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
   const [localTitle, setLocalTitle] = useState(title);
   const [total, setTotal] = useState(0);
   const [lineResults, setLineResults] = useState<any[]>([]);
+  const [memory, setMemory] = useState(0);
   const [activeTab, setActiveTab] = useState('K1');
   const [isSaving, setIsSaving] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const canvasRef = useRef<any>(null);
 
@@ -52,6 +54,24 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
     setLineResults(res.lineResults);
   }, [text]);
 
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (ctrl && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      } else if (ctrl && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if (ctrl && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [text, localTitle]); // eslint-disable-line
 
   const handleKeyPress = (val: string) => {
     const el = textareaRef.current;
@@ -94,6 +114,19 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
       
       newText = formattedText.substring(0, newStart) + '\n' + formattedText.substring(newEnd);
       cursorOffset = (newStart - start) + 1;
+    } else if (val === 'M+') {
+      setMemory(prev => prev + total);
+      cursorOffset = 0;
+    } else if (val === 'M-') {
+      setMemory(prev => prev - total);
+      cursorOffset = 0;
+    } else if (val === 'MC') {
+      setMemory(0);
+      cursorOffset = 0;
+    } else if (val === 'MR') {
+      const recallVal = memory.toString();
+      newText = text.substring(0, start) + recallVal + text.substring(end);
+      cursorOffset = recallVal.length;
     } else {
       // Add space after math operators for better formatting
       const isOperator = ['+', '-', 'x', '÷', '*', '/'].includes(val);
@@ -330,7 +363,13 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
             </div>
             
             <div className="flex items-center pr-4">
+                 {memory !== 0 && (
+                   <div className="mr-3 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded border border-blue-200 animate-pulse">
+                     M
+                   </div>
+                 )}
                  {isDrawing && (
+
                     <button onClick={() => canvasRef.current?.undo()} className="p-2 text-gray-600 hover:bg-[#c8d0d8] rounded mr-2 transition-colors">
                         <RotateCcw size={18} />
                     </button>

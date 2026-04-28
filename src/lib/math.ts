@@ -1,15 +1,25 @@
 export interface LineResult {
   value: number | null;
-  type: 'number' | 'percentage' | 'total' | 'none';
+  type: 'number' | 'percentage' | 'subtotal' | 'total' | 'none';
   originalValue?: number;
 }
 
 export function evaluateNotes(text: string): { total: number, formattedText: string, lineResults: LineResult[] } {
   const lines = text.split('\n');
   let runningTotal = 0;
+  let blockTotal = 0;
   const lineResults: LineResult[] = [];
   
   const formattedLines = lines.map(line => {
+    const trimmed = line.trim();
+
+    // Separator line: ---, ===, etc.
+    if (/^[-=]{3,}/.test(trimmed)) {
+      lineResults.push({ value: blockTotal, type: 'subtotal' });
+      blockTotal = 0;
+      return line;
+    }
+
     // Match: sign (optional), space (optional), number, percentage (optional), comment (optional)
     const match = line.match(/^([+\-*/x÷]?)\s*([\d,]+(?:\.\d+)?)\s*(%?)\s*(.*)$/);
     
@@ -32,16 +42,21 @@ export function evaluateNotes(text: string): { total: number, formattedText: str
         
         if (signStr === '-') {
           runningTotal -= lineVal;
+          blockTotal -= lineVal;
           displayVal = -displayVal;
         } else if (signStr === 'x' || signStr === '*') {
           runningTotal *= lineVal;
-          displayVal = runningTotal; // For multiplication, show the new total or factor? 
-          // Usually, showing the result of the line makes more sense.
+          blockTotal = runningTotal;
+          displayVal = runningTotal;
         } else if (signStr === '÷' || signStr === '/') {
-          if (lineVal !== 0) runningTotal /= lineVal;
+          if (lineVal !== 0) {
+            runningTotal /= lineVal;
+            blockTotal = runningTotal;
+          }
           displayVal = runningTotal;
         } else {
           runningTotal += lineVal;
+          blockTotal += lineVal;
         }
 
         lineResults.push({ value: displayVal, type: resultType, originalValue: num });
@@ -50,7 +65,7 @@ export function evaluateNotes(text: string): { total: number, formattedText: str
         // Format the number part with commas for the editor text
         const formattedNum = new Intl.NumberFormat('en-US', {
           minimumFractionDigits: 0,
-          maximumFractionDigits: 20 // Keep original decimals if they exist
+          maximumFractionDigits: 20
         }).format(num);
 
         return `${signPart}${formattedNum}${match[3]} ${comment}`.trimEnd();
@@ -62,6 +77,7 @@ export function evaluateNotes(text: string): { total: number, formattedText: str
 
   return { total: runningTotal, formattedText: formattedLines.join('\n'), lineResults };
 }
+
 
 
 

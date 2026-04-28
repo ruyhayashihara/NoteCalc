@@ -60,6 +60,11 @@ export const Editor = forwardRef<HTMLTextAreaElement, EditorProps>(({ text, onTe
                     | {formatLineResult(result.value)}
                   </span>
                 )}
+                {result.type === 'subtotal' && result.value !== null && (
+                  <span className="text-blue-500 font-semibold text-base">
+                    Σ {formatLineResult(result.value)}
+                  </span>
+                )}
               </div>
             ))}
           </div>
