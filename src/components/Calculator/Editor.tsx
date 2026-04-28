@@ -62,7 +62,7 @@ export const Editor = forwardRef<HTMLTextAreaElement, EditorProps>(({ text, onTe
                 )}
                 {result.type === 'subtotal' && result.value !== null && (
                   <span className="text-blue-500 font-semibold text-base">
-                    Σ {formatLineResult(result.value)}
+                    ¥ {new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.trunc(result.value))}
                   </span>
                 )}
               </div>
