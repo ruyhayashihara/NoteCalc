@@ -4,6 +4,71 @@ export interface LineResult {
   originalValue?: number;
 }
 
+// Factorial helper
+function factorial(n: number): number {
+  if (n < 0) return NaN;
+  if (n <= 1) return 1;
+  let result = 1;
+  for (let i = 2; i <= Math.trunc(n); i++) result *= i;
+  return result;
+}
+
+// Evaluate scientific expressions in a string
+// Supports: sin(), cos(), tan(), ln(), log(), √(), ^, !, π, e
+export function evaluateScientific(expr: string, isDeg = true): number | null {
+  try {
+    let s = expr.trim();
+    
+    // Replace constants
+    s = s.replace(/π/g, String(Math.PI));
+    s = s.replace(/(?<![a-zA-Z])e(?![a-zA-Z(])/g, String(Math.E));
+    
+    // Replace factorial: number!
+    s = s.replace(/([\d.]+)!/g, (_, n) => String(factorial(parseFloat(n))));
+    
+    // Replace functions (innermost first via loop)
+    let maxIter = 20;
+    while (/(?:sin|cos|tan|ln|log|√)\(/.test(s) && maxIter-- > 0) {
+      // Match function(number) — innermost only
+      s = s.replace(/sin\(([^()]+)\)/g, (_, inner) => {
+        const v = parseFloat(inner);
+        return String(Math.sin(isDeg ? v * Math.PI / 180 : v));
+      });
+      s = s.replace(/cos\(([^()]+)\)/g, (_, inner) => {
+        const v = parseFloat(inner);
+        return String(Math.cos(isDeg ? v * Math.PI / 180 : v));
+      });
+      s = s.replace(/tan\(([^()]+)\)/g, (_, inner) => {
+        const v = parseFloat(inner);
+        return String(Math.tan(isDeg ? v * Math.PI / 180 : v));
+      });
+      s = s.replace(/ln\(([^()]+)\)/g, (_, inner) => String(Math.log(parseFloat(inner))));
+      s = s.replace(/log\(([^()]+)\)/g, (_, inner) => String(Math.log10(parseFloat(inner))));
+      s = s.replace(/√\(([^()]+)\)/g, (_, inner) => String(Math.sqrt(parseFloat(inner))));
+    }
+    
+    // Replace power: a^b
+    s = s.replace(/([\d.]+)\^([\d.]+)/g, (_, base, exp) => String(Math.pow(parseFloat(base), parseFloat(exp))));
+    
+    // Replace E notation: aEb → a * 10^b
+    s = s.replace(/([\d.]+)E([\d.+-]+)/g, (_, a, b) => String(parseFloat(a) * Math.pow(10, parseFloat(b))));
+    
+    // Evaluate remaining simple parentheses
+    while (/\([^()]+\)/.test(s) && maxIter-- > 0) {
+      s = s.replace(/\(([^()]+)\)/, (_, inner) => {
+        const val = parseFloat(inner);
+        return isNaN(val) ? inner : String(val);
+      });
+    }
+    
+    const result = parseFloat(s);
+    return isNaN(result) ? null : result;
+  } catch {
+    return null;
+  }
+}
+
+
 export function evaluateNotes(text: string): { total: number, formattedText: string, lineResults: LineResult[] } {
   const lines = text.split('\n');
   let runningTotal = 0;

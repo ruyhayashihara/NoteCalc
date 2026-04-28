@@ -4,7 +4,7 @@ interface KeyProps {
   key?: string | number;
   label: string;
   onClick: (val: string) => void;
-  variant?: 'default' | 'operator' | 'ac' | 'del' | 'nav' | 'k2-operator' | 'k2-ac';
+  variant?: 'default' | 'operator' | 'ac' | 'del' | 'nav' | 'k2-operator' | 'k2-ac' | 'scientific' | 'scientific-eq';
 }
 
 export const Key = ({ label, onClick, variant = 'default' }: KeyProps) => {
@@ -37,6 +37,16 @@ export const Key = ({ label, onClick, variant = 'default' }: KeyProps) => {
       break;
     case 'nav':
       bg = 'bg-white hover:bg-gray-50';
+      break;
+    case 'scientific':
+      bg = 'bg-[#3a4556] hover:bg-[#4a5566]';
+      border = 'border-r border-b border-[#2d3747]';
+      textColor = 'text-gray-200 font-medium text-sm';
+      break;
+    case 'scientific-eq':
+      bg = 'bg-[#6b8aad] hover:bg-[#7b9abd]';
+      border = 'border-r border-b border-[#5a7a9d]';
+      textColor = 'text-white font-semibold';
       break;
   }
 

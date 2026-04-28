@@ -18,20 +18,24 @@ export const VirtualKeyboard = ({ activeTab, onKeyPress, onNavAction }: VirtualK
       ['0', '.', '=', '↵']
     ],
     K2: [
-      ['AC', 'DEL', '%', '÷'],
-      ['7', '8', '9', 'x'],
-      ['4', '5', '6', '-'],
-      ['1', '2', '3', '+'],
-      ['0', '00', '.', '=']
+      ['Deg', 'Rad', 'x!', '(', ')', '%', 'AC'],
+      ['Inv', 'sin', 'ln', '7', '8', '9', '÷'],
+      ['π', 'cos', 'log', '4', '5', '6', 'x'],
+      ['e', 'tan', '√', '1', '2', '3', '-'],
+      ['Ans', 'EXP', 'xʸ', '0', '.', '=', '+']
     ]
   };
 
-  const getVariant = (key: string, tab: string) => {
+  const scientificFns = ['Deg', 'Rad', 'x!', '(', ')', 'Inv', 'sin', 'ln', 'cos', 'log', 'tan', '√', 'π', 'e', 'Ans', 'EXP', 'xʸ'];
+
+  const getVariant = (key: string, tab: string): any => {
     const isOperator = ['÷', 'x', '-', '+', '=', '↵', 'M+', 'M-', 'MC', 'MR', '%'].includes(key);
     if (tab === 'K2') {
       if (key === 'AC') return 'k2-ac';
-      if (key === 'DEL') return 'del';
+      if (key === '=') return 'scientific-eq';
+      if (scientificFns.includes(key)) return 'scientific';
       if (isOperator) return 'k2-operator';
+      return 'default';
     } else {
       if (key === 'AC') return 'ac';
       if (key === 'DEL') return 'del';
@@ -68,9 +72,10 @@ export const VirtualKeyboard = ({ activeTab, onKeyPress, onNavAction }: VirtualK
   }
 
   const currentLayout = layouts[activeTab as keyof typeof layouts] || layouts.K1;
+  const gridCols = activeTab === 'K2' ? 'grid-cols-7' : 'grid-cols-4';
 
   return (
-    <div className={`grid grid-cols-4 select-none ${activeTab === 'K2' ? 'bg-white' : ''}`}>
+    <div className={`grid ${gridCols} select-none ${activeTab === 'K2' ? 'bg-[#2a3444]' : ''}`}>
       {currentLayout.flat().map((btnLabel, idx) => (
         <Key 
           key={`${activeTab}-${idx}`} 

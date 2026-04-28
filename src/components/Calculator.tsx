@@ -21,8 +21,11 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
   const [total, setTotal] = useState(0);
   const [lineResults, setLineResults] = useState<any[]>([]);
   const [memory, setMemory] = useState(0);
+  const [angleMode, setAngleMode] = useState<'deg' | 'rad'>('deg');
   const [activeTab, setActiveTab] = useState('K1');
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
   const [showSaved, setShowSaved] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -127,6 +130,29 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
       const recallVal = memory.toString();
       newText = text.substring(0, start) + recallVal + text.substring(end);
       cursorOffset = recallVal.length;
+    } else if (val === 'Deg') {
+      setAngleMode('deg');
+      cursorOffset = 0;
+    } else if (val === 'Rad') {
+      setAngleMode('rad');
+      cursorOffset = 0;
+    } else if (val === 'Ans') {
+      const ansStr = Math.trunc(total).toString();
+      newText = text.substring(0, start) + ansStr + text.substring(end);
+      cursorOffset = ansStr.length;
+    } else if (['sin', 'cos', 'tan', 'ln', 'log', '√', 'x!', 'EXP', 'xʸ', 'π', 'e', '(', ')', 'Inv'].includes(val)) {
+      // Scientific functions: insert the function text
+      const sciMap: Record<string, string> = {
+        'sin': 'sin(', 'cos': 'cos(', 'tan': 'tan(',
+        'ln': 'ln(', 'log': 'log(',
+        '√': '√(', 'x!': '!', 'EXP': 'E',
+        'xʸ': '^', 'π': 'π', 'e': 'e',
+        '(': '(', ')': ')',
+        'Inv': 'Inv'
+      };
+      const insertText = sciMap[val] || val;
+      newText = text.substring(0, start) + insertText + text.substring(end);
+      cursorOffset = insertText.length;
     } else {
       // Add space after math operators for better formatting
       const isOperator = ['+', '-', 'x', '÷', '*', '/'].includes(val);
@@ -350,16 +376,16 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
                     {t}
                   </button>
                ))}
-               <button 
-                 onClick={() => handleTabClick('DRAW')} 
-                 className={`px-4 py-3 flex items-center justify-center transition-colors border-r border-[#c8d0d8] ${
-                    activeTab === 'DRAW' 
-                    ? 'bg-[#c8d0d8] text-gray-800' 
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-[#ced4da]'
-                 }`}
-               >
-                 <Keyboard size={18} />
-               </button>
+                <button 
+                  onClick={() => setIsKeyboardVisible(!isKeyboardVisible)} 
+                  className={`px-4 py-3 flex items-center justify-center transition-colors border-r border-[#c8d0d8] ${
+                     !isKeyboardVisible 
+                     ? 'bg-blue-100 text-blue-600' 
+                     : 'text-gray-500 hover:text-gray-700 hover:bg-[#ced4da]'
+                  }`}
+                >
+                  <Keyboard size={18} />
+                </button>
             </div>
             
             <div className="flex items-center pr-4">
@@ -380,20 +406,38 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
             </div>
         </div>
 
-        {activeTab !== 'ABC' && activeTab !== 'DRAW' && (
-          <VirtualKeyboard 
-            activeTab={activeTab}
-            onKeyPress={handleKeyPress}
-            onNavAction={handleNavKeyPress}
-          />
-        )}
-        
-        {activeTab === 'ABC' && (
-           <div className="py-12 flex flex-col items-center justify-center text-gray-500 bg-[#e2e6eb]">
-               <Keyboard size={48} className="mb-4 opacity-20" />
-               <p>Use your device's native keyboard to type.</p>
-           </div>
-        )}
+        <AnimatePresence>
+          {isKeyboardVisible && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              className="overflow-hidden bg-[#e2e6eb]"
+            >
+              {activeTab !== 'ABC' && activeTab !== 'DRAW' && (
+                <VirtualKeyboard 
+                  activeTab={activeTab}
+                  onKeyPress={handleKeyPress}
+                  onNavAction={handleNavKeyPress}
+                />
+              )}
+              
+              {activeTab === 'ABC' && (
+                 <div className="py-12 flex flex-col items-center justify-center text-gray-500 bg-[#e2e6eb]">
+                     <Keyboard size={48} className="mb-4 opacity-20" />
+                     <p>Use your device's native keyboard to type.</p>
+                 </div>
+              )}
+
+              {activeTab === 'DRAW' && (
+                 <div className="h-48 flex items-center justify-center text-gray-400 bg-white rounded-lg border border-gray-300 m-2">
+                     Desenhe no editor acima
+                 </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
