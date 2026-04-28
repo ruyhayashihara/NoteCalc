@@ -1,15 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { evaluateNotes, formatNumber } from '../lib/math';
-import { RotateCcw, Menu, Keyboard } from 'lucide-react';
+import { RotateCcw, Menu, Keyboard, Check, Loader2 } from 'lucide-react';
 import { useCalculatorHistory } from '../hooks/useCalculatorHistory';
 import { Editor } from './Calculator/Editor';
 import { VirtualKeyboard } from './Calculator/VirtualKeyboard';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface CalculatorProps {
   key?: string | number | null;
   initialContent: string;
   initialDrawing: string;
-  onSave: (content: string, drawing: string, title?: string) => void;
+  onSave: (content: string, drawing: string, title?: string) => Promise<void> | void;
   onMenuClick: () => void;
   title: string;
 }
@@ -18,7 +19,10 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
   const { text, setText, updateText, undo, redo, resetHistory, canUndo, canRedo } = useCalculatorHistory(initialContent);
   const [localTitle, setLocalTitle] = useState(title);
   const [total, setTotal] = useState(0);
+  const [lineResults, setLineResults] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('K1');
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const canvasRef = useRef<any>(null);
 
@@ -45,7 +49,9 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
   useEffect(() => {
     const res = evaluateNotes(text);
     setTotal(res.total);
+    setLineResults(res.lineResults);
   }, [text]);
+
 
   const handleKeyPress = (val: string) => {
     const el = textareaRef.current;
@@ -76,13 +82,28 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
       newText = text.substring(0, start) + insertText + text.substring(end);
       cursorOffset = insertText.length;
     } else if (val === '↵') {
-      newText = text.substring(0, start) + '\n' + text.substring(end);
-      cursorOffset = 1;
+      const { formattedText } = evaluateNotes(text);
+      
+      // Calculate how many characters were added/removed due to formatting BEFORE the cursor
+      // This is essential to keep the cursor at the correct logical position
+      const textBeforeCursor = text.substring(0, start);
+      const { formattedText: formattedBefore } = evaluateNotes(textBeforeCursor);
+      
+      const newStart = formattedBefore.length;
+      const newEnd = newStart + (end - start);
+      
+      newText = formattedText.substring(0, newStart) + '\n' + formattedText.substring(newEnd);
+      cursorOffset = (newStart - start) + 1;
     } else {
-      newText = text.substring(0, start) + val + text.substring(end);
+      // Add space after math operators for better formatting
+      const isOperator = ['+', '-', 'x', '÷', '*', '/'].includes(val);
+      const insertText = isOperator ? `${val} ` : val;
+      newText = text.substring(0, start) + insertText + text.substring(end);
+      cursorOffset = insertText.length;
     }
 
     updateText(newText);
+
     
     setTimeout(() => {
       const newPos = Math.max(0, start + cursorOffset);
@@ -173,12 +194,24 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
   };
 
   const handleSave = async () => {
+    if (isSaving) return;
+    
+    setIsSaving(true);
     let drawingData = initialDrawing;
     if (isDrawing && canvasRef.current) {
         const paths = await canvasRef.current.exportPaths();
         drawingData = JSON.stringify(paths);
     }
-    onSave(text, drawingData, localTitle);
+    
+    try {
+      await onSave(text, drawingData, localTitle);
+      setIsSaving(false);
+      setShowSaved(true);
+      setTimeout(() => setShowSaved(false), 2000);
+    } catch (error) {
+      console.error('Save failed:', error);
+      setIsSaving(false);
+    }
   };
 
   const handleTabClick = (tab: string) => {
@@ -202,10 +235,58 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
                placeholder="Nome da anotação..."
            />
         </div>
-        <button onClick={handleSave} className="p-2 text-blue-600 font-medium hover:bg-blue-50 rounded shrink-0">
-          Save
+        <button 
+          onClick={handleSave} 
+          disabled={isSaving}
+          className={`relative flex items-center justify-center min-w-[80px] h-10 px-4 rounded-lg font-medium transition-colors duration-300 overflow-hidden ${
+            showSaved 
+              ? 'bg-green-100 text-green-700' 
+              : 'text-blue-600 hover:bg-blue-50'
+          }`}
+        >
+          <AnimatePresence mode="wait">
+            {isSaving ? (
+              <motion.div
+                key="saving"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="flex items-center"
+              >
+                <Loader2 size={18} className="animate-spin" />
+              </motion.div>
+            ) : showSaved ? (
+              <motion.div
+                key="saved"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="flex items-center"
+              >
+                <Check size={18} className="mr-1" />
+                <span>Saved</span>
+              </motion.div>
+            ) : (
+              <motion.span
+                key="save"
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+              >
+                Save
+              </motion.span>
+            )}
+          </AnimatePresence>
+          
+          {/* Subtle ripple effect overlay */}
+          <motion.div 
+            className="absolute inset-0 bg-current opacity-0"
+            whileTap={{ opacity: 0.1 }}
+          />
         </button>
       </div>
+
+
 
       <Editor 
         ref={textareaRef}
@@ -214,7 +295,11 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
         isDrawing={isDrawing}
         canvasRef={canvasRef}
         activeTab={activeTab}
+        lineResults={lineResults}
+        onEnter={() => handleKeyPress('↵')}
       />
+
+
 
       <div className="bg-[#e2e6eb] shrink-0">
         <div className="flex items-center justify-between bg-[#d7dde3] border-b border-[#c8d0d8]">
