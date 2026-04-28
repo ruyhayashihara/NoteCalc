@@ -14,9 +14,17 @@ export function evaluateNotes(text: string): { total: number, formattedText: str
     const trimmed = line.trim();
 
     // Separator line: ---, ===, etc.
-    if (/^[-=]{3,}/.test(trimmed)) {
+    if (/^[-]{3,}/.test(trimmed)) {
       lineResults.push({ value: blockTotal, type: 'subtotal' });
       blockTotal = 0;
+      return line;
+    }
+
+    // Result line (= ¥...) — reset accumulators so next block starts fresh
+    if (/^=/.test(trimmed)) {
+      runningTotal = 0;
+      blockTotal = 0;
+      lineResults.push({ value: null, type: 'none' });
       return line;
     }
 
