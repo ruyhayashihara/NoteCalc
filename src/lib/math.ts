@@ -8,20 +8,22 @@ export function evaluateNotes(text: string): { total: number, formattedText: str
   const lines = text.split('\n');
   let runningTotal = 0;
   let blockTotal = 0;
+  let grandTotal = 0;
   const lineResults: LineResult[] = [];
   
   const formattedLines = lines.map(line => {
     const trimmed = line.trim();
 
-    // Separator line: ---, ===, etc.
+    // Separator line: ---
     if (/^[-]{3,}/.test(trimmed)) {
       lineResults.push({ value: blockTotal, type: 'subtotal' });
       blockTotal = 0;
       return line;
     }
 
-    // Result line (= ¥...) — reset accumulators so next block starts fresh
+    // Result line (= ¥...) — reset block accumulators so next block starts fresh
     if (/^=/.test(trimmed)) {
+      grandTotal += runningTotal;
       runningTotal = 0;
       blockTotal = 0;
       lineResults.push({ value: null, type: 'none' });
@@ -83,7 +85,7 @@ export function evaluateNotes(text: string): { total: number, formattedText: str
     return line;
   });
 
-  return { total: runningTotal, formattedText: formattedLines.join('\n'), lineResults };
+  return { total: grandTotal + runningTotal, formattedText: formattedLines.join('\n'), lineResults };
 }
 
 
