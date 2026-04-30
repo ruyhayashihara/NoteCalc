@@ -19,6 +19,7 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
   const { text, setText, updateText, undo, redo, resetHistory, canUndo, canRedo } = useCalculatorHistory(initialContent);
   const [localTitle, setLocalTitle] = useState(title);
   const [total, setTotal] = useState(0);
+  const [currentBlockTotal, setCurrentBlockTotal] = useState(0);
   const [lineResults, setLineResults] = useState<any[]>([]);
   const [memory, setMemory] = useState(0);
   const [angleMode, setAngleMode] = useState<'deg' | 'rad'>('deg');
@@ -54,6 +55,7 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
   useEffect(() => {
     const res = evaluateNotes(text);
     setTotal(res.total);
+    setCurrentBlockTotal(res.currentBlockTotal);
     setLineResults(res.lineResults);
   }, [text]);
 
@@ -100,7 +102,7 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
         cursorOffset = 0;
       }
     } else if (val === '=') {
-      const formattedTotal = formatNumber(total);
+      const formattedTotal = formatNumber(currentBlockTotal);
       const insertText = `\n------------------\n= ${formattedTotal}\n`;
       newText = text.substring(0, start) + insertText + text.substring(end);
       cursorOffset = insertText.length;
@@ -137,7 +139,7 @@ export const Calculator = ({ initialContent, initialDrawing, onSave, onMenuClick
       setAngleMode('rad');
       cursorOffset = 0;
     } else if (val === 'Ans') {
-      const ansStr = Math.trunc(total).toString();
+      const ansStr = Math.trunc(currentBlockTotal).toString();
       newText = text.substring(0, start) + ansStr + text.substring(end);
       cursorOffset = ansStr.length;
     } else if (['sin', 'cos', 'tan', 'ln', 'log', '√', 'x!', 'EXP', 'xʸ', 'π', 'e', '(', ')', 'Inv'].includes(val)) {

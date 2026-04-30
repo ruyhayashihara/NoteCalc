@@ -69,7 +69,7 @@ export function evaluateScientific(expr: string, isDeg = true): number | null {
 }
 
 
-export function evaluateNotes(text: string): { total: number, formattedText: string, lineResults: LineResult[] } {
+export function evaluateNotes(text: string): { total: number, currentBlockTotal: number, formattedText: string, lineResults: LineResult[] } {
   const lines = text.split('\n');
   let runningTotal = 0;
   let blockTotal = 0;
@@ -150,7 +150,12 @@ export function evaluateNotes(text: string): { total: number, formattedText: str
     return line;
   });
 
-  return { total: grandTotal + runningTotal, formattedText: formattedLines.join('\n'), lineResults };
+  return { 
+    total: grandTotal + runningTotal, 
+    currentBlockTotal: runningTotal,
+    formattedText: formattedLines.join('\n'), 
+    lineResults 
+  };
 }
 
 
