@@ -1,64 +1,44 @@
-import { Delete } from 'lucide-react';
-
 interface KeyProps {
-  key?: string | number;
   label: string;
   onClick: (val: string) => void;
-  variant?: 'default' | 'operator' | 'ac' | 'del' | 'nav' | 'k2-operator' | 'k2-ac' | 'scientific' | 'scientific-eq';
+  variant?: 'default' | 'operator' | 'ac' | 'del' | 'scientific' | 'k2-ac' | 'k2-operator' | 'scientific-eq';
+  theme: any;
 }
 
-export const Key = ({ label, onClick, variant = 'default' }: KeyProps) => {
-  let bg = 'bg-[#f4f5f7] hover:bg-[#e4e6ea]';
-  let textColor = 'text-gray-800 font-medium';
-  let border = 'border-r border-b border-[#c8d0d8]';
+export const Key = ({ label, onClick, variant = 'default', theme }: KeyProps) => {
+  const getStyle = () => {
+    switch (variant) {
+      case 'ac':
+        return { backgroundColor: '#cb7145', color: '#ffffff' };
+      case 'del':
+        return { backgroundColor: '#b6c7d5', color: '#1f2937' };
+      case 'operator':
+        return { backgroundColor: theme.colors.keyOperator, color: theme.colors.text };
+      case 'scientific':
+        return { backgroundColor: `${theme.colors.keyDefault}80`, color: theme.colors.text, fontSize: '0.9rem' };
+      case 'k2-ac':
+        return { backgroundColor: '#cb7145', color: '#ffffff' };
+      case 'k2-operator':
+        return { backgroundColor: theme.colors.keyOperator, color: theme.colors.text };
+      case 'scientific-eq':
+        return { backgroundColor: '#cb7145', color: '#ffffff' };
+      default:
+        return { backgroundColor: theme.colors.keyDefault, color: theme.colors.text };
+    }
+  };
 
-  switch (variant) {
-    case 'ac':
-      bg = 'bg-[#cb7145] hover:bg-[#b86138]';
-      border = 'border-r border-b border-[#af5e35]';
-      textColor = 'text-white';
-      break;
-    case 'del':
-      bg = 'bg-[#8296a8] hover:bg-[#728595]';
-      border = 'border-r border-b border-[#6c7d8c]';
-      textColor = 'text-white';
-      break;
-    case 'operator':
-      bg = 'bg-[#b6c7d5] hover:bg-[#a5b7c6]';
-      border = 'border-r border-b border-[#a8b8c5]';
-      break;
-    case 'k2-ac':
-      bg = 'bg-red-50 hover:bg-red-100';
-      textColor = 'text-red-600';
-      break;
-    case 'k2-operator':
-      bg = 'bg-blue-50 hover:bg-blue-100';
-      textColor = 'text-blue-700';
-      break;
-    case 'nav':
-      bg = 'bg-white hover:bg-gray-50';
-      break;
-    case 'scientific':
-      bg = 'bg-[#3a4556] hover:bg-[#4a5566]';
-      border = 'border-r border-b border-[#2d3747]';
-      textColor = 'text-gray-200 font-medium text-sm';
-      break;
-    case 'scientific-eq':
-      bg = 'bg-[#6b8aad] hover:bg-[#7b9abd]';
-      border = 'border-r border-b border-[#5a7a9d]';
-      textColor = 'text-white font-semibold';
-      break;
-  }
+  const style = getStyle();
 
   return (
     <button
-      onPointerDown={(e) => {
-        e.preventDefault();
-        onClick(label);
+      onPointerDown={(e) => { e.preventDefault(); onClick(label); }}
+      className="flex items-center justify-center border-r border-b active:opacity-70 transition-colors h-14 sm:h-[72px] md:h-[80px] font-semibold text-lg select-none"
+      style={{ 
+        ...style,
+        borderColor: theme.colors.border,
       }}
-      className={`flex items-center justify-center py-2 text-xl sm:text-2xl ${bg} ${textColor} ${border} active:opacity-70 transition-colors h-14 sm:h-[72px] md:h-[80px]`}
     >
-      {label === 'DEL' ? <Delete size={24} /> : label}
+      {label}
     </button>
   );
 };

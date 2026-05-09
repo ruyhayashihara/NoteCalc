@@ -1,9 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from './lib/supabase';
 import { Calculator } from './components/Calculator';
 import { Sidebar } from './components/Sidebar';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { ExportProvider } from './contexts/ExportContext';
+import { HistoryProvider } from './contexts/HistoryContext';
 
-export default function App() {
+function AppContent() {
+  const { theme } = useTheme();
   const [user, setUser] = useState<any>(null);
   const [authInitialized, setAuthInitialized] = useState(false);
   const [email, setEmail] = useState('');
@@ -13,6 +17,7 @@ export default function App() {
   const [notes, setNotes] = useState<any[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const {
@@ -208,11 +213,11 @@ export default function App() {
     return (
       <div className="flex bg-[#f2f3f5] flex-col items-center justify-center min-h-screen p-4">
         <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center">
-          <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
             <span className="text-2xl font-bold">K</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Scratchpad</h1>
-          <p className="text-gray-500 mb-8">Calculate, take notes, and draw.</p>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">Scratchpad PRO</h1>
+          <p className="text-gray-500 mb-8">Calculate, take notes, and draw with style.</p>
           
           <button 
             onClick={handleSignInWithGoogle}
@@ -256,7 +261,7 @@ export default function App() {
             <button 
               onClick={isSignUp ? handleSignUpWithEmail : handleSignInWithEmail}
               disabled={!email || !password}
-              className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg text-white bg-blue-600 hover:bg-blue-700 font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98]"
+              className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98]"
             >
               {isSignUp ? 'Create Account' : 'Sign In'}
             </button>
@@ -354,3 +359,14 @@ const handleSignOut = async () => {
     console.error('Error signing out:', error);
   }
 };
+export default function App() {
+  return (
+    <ThemeProvider>
+      <ExportProvider>
+        <HistoryProvider>
+          <AppContent />
+        </HistoryProvider>
+      </ExportProvider>
+    </ThemeProvider>
+  );
+}
