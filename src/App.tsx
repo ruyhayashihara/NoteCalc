@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { Calculator } from './components/Calculator';
 import { Sidebar } from './components/Sidebar';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { ExportProvider } from './contexts/ExportContext';
 import { HistoryProvider } from './contexts/HistoryContext';
+import { ThemeModal } from './components/ThemeModal';
+import { HistoryModal } from './components/HistoryModal';
 
 function AppContent() {
   const { theme } = useTheme();
@@ -17,7 +19,10 @@ function AppContent() {
   const [notes, setNotes] = useState<any[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  const [showSettings, setShowSettings]   = useState(false);
+  const [showThemeModal, setShowThemeModal]   = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const exportTriggerRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const {
@@ -302,17 +307,22 @@ function AppContent() {
           onDeleteNote={handleDeleteNote}
           user={user}
           onLogout={handleSignOut}
+          onOpenSettings={() => { setShowThemeModal(true); setIsSidebarOpen(false); }}
+          onOpenHistory={() => { setShowHistoryModal(true); setIsSidebarOpen(false); }}
+          onOpenExport={() => { exportTriggerRef.current?.(); setIsSidebarOpen(false); }}
         />
 
         <main className="flex-1 w-full h-full relative flex flex-col">
           {activeNoteId && activeNote ? (
             <Calculator 
               key={activeNoteId}
+              noteId={activeNoteId}
               title={activeNote.title}
               initialContent={activeNote.content || ''}
               initialDrawing={activeNote.drawing || ''}
               onSave={handleSaveNote}
               onMenuClick={() => setIsSidebarOpen(true)}
+              exportTriggerRef={exportTriggerRef}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full bg-[#f2f3f5] p-6 text-center">
@@ -334,6 +344,26 @@ function AppContent() {
           )}
         </main>
       </div>
+
+      {/* ── Global Modals ─────────────────────────────────────────────── */}
+      {showThemeModal && (
+        <ThemeModal onClose={() => setShowThemeModal(false)} />
+      )}
+      {showHistoryModal && (
+        <HistoryModal
+          onClose={() => setShowHistoryModal(false)}
+          onRestore={(content) => {
+            if (activeNoteId && activeNote) {
+              // Patch local notes state so the Calculator re-initialises
+              setNotes(prev =>
+                prev.map(n =>
+                  n.id === activeNoteId ? { ...n, content } : n
+                )
+              );
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -343,9 +373,11 @@ const handleSignInWithGoogle = async () => {
   try {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
+      options: {
+        redirectTo: 'http://localhost:3000',
+      },
     });
     if (error) throw error;
-    // Note: signInWithOAuth will redirect, so we don't expect to reach here in the same page load
   } catch (error) {
     console.error('Error signing in with Google:', error);
   }

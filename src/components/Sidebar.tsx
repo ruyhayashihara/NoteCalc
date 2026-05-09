@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Plus, X, LogOut, FileText, Settings, History, Download } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -11,7 +12,6 @@ interface SidebarProps {
   onDeleteNote: (id: string) => void;
   user: any;
   onLogout: () => void;
-  theme: any;
   onOpenSettings?: () => void;
   onOpenHistory?: () => void;
   onOpenExport?: () => void;
@@ -27,11 +27,11 @@ export const Sidebar = ({
   onDeleteNote, 
   user, 
   onLogout,
-  theme,
   onOpenSettings,
   onOpenHistory,
   onOpenExport,
 }: SidebarProps) => {
+  const { theme } = useTheme();
   return (
     <>
       {isOpen && (
