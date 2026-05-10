@@ -1,44 +1,59 @@
-# [Project name]
+# Scratchpad PRO
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A notes + calculator + drawing app with Supabase auth and real-time sync. Users sign in with email or Google, create scratchpad notes that support inline math calculations, freehand drawing, and export.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/scratchpad run dev` — run the frontend (via workflow)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required secrets: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` — Supabase project credentials
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Frontend: React 19 + Vite 7, Tailwind CSS v4
+- Backend auth/DB: Supabase (external)
+- API: Express 5 (api-server artifact, for future use)
+- Animation: motion/react
+- Build: Vite
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/scratchpad/` — main frontend app (react-vite artifact, preview at `/`)
+- `artifacts/scratchpad/src/App.tsx` — root app, auth flow, note management
+- `artifacts/scratchpad/src/components/Calculator.tsx` — main scratchpad editor with math evaluation
+- `artifacts/scratchpad/src/components/Calculator/` — Editor, VirtualKeyboard, Key, ProgrammableKeys
+- `artifacts/scratchpad/src/contexts/ThemeContext.tsx` — theme system (multiple color themes)
+- `artifacts/scratchpad/src/contexts/HistoryContext.tsx` — calculation history
+- `artifacts/scratchpad/src/lib/supabase.ts` — Supabase client
+- `artifacts/scratchpad/src/lib/math.ts` — inline math evaluation engine
+- `artifacts/api-server/` — Express API server (for future backend features)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Uses Supabase directly from the frontend for auth and data (no custom backend needed)
+- Real-time note sync via Supabase `postgres_changes` subscription
+- Math evaluation is done client-side in `lib/math.ts`
+- Google OAuth redirect uses `window.location.origin` to work across environments
+- Supabase client falls back to placeholder values so the app renders even without secrets (shows login screen with clear error if credentials are wrong)
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Scratchpad PRO lets users create personal scratchpad notes that combine freeform text, inline math calculations (auto-evaluated line by line), and freehand drawing. Notes are synced to Supabase in real-time across sessions. Multiple visual themes, export to PDF, calculation history, and virtual keyboard support.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Migrated from Vercel/v0 — preserve original app look and behavior exactly
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- The frontend artifact is at preview path `/` — always at the root
+- `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` must be set as Replit secrets for auth to work
+- Google OAuth redirect URL in Supabase dashboard must include the Replit domain (found in `$REPLIT_DOMAINS`)
+- Tailwind v4: `@import url(...)` must come BEFORE `@import "tailwindcss"` in CSS files
+- Do NOT run `pnpm dev` at workspace root — use workflows or `pnpm --filter`
 
 ## Pointers
 
