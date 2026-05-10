@@ -1,4 +1,4 @@
-import { forwardRef, useEffect } from 'react';
+import { forwardRef, useEffect, useRef } from 'react';
 import { LineResult } from '../../lib/math';
 import { DrawingCanvas, DrawingCanvasHandle } from './DrawingCanvas';
 
