@@ -295,62 +295,54 @@ function AppContent() {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden font-sans bg-[#f2f3f5]">
-      {/*
-        Mobile:  single centered column, sidebar slides in as overlay
-        Desktop: two-column — persistent sidebar on left, editor fills right
-      */}
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        notes={notes}
-        activeNoteId={activeNoteId}
-        onSelectNote={setActiveNoteId}
-        onCreateNote={handleCreateNote}
-        onDeleteNote={handleDeleteNote}
-        user={user}
-        onLogout={handleSignOut}
-        onOpenSettings={() => { setShowThemeModal(true); setIsSidebarOpen(false); }}
-        onOpenHistory={() => { setShowHistoryModal(true); setIsSidebarOpen(false); }}
-        onOpenExport={() => { exportTriggerRef.current?.(); setIsSidebarOpen(false); }}
-      />
+    <div className="flex justify-center flex-1 h-screen w-full bg-gray-100 overflow-hidden font-sans">
+      <div className="flex flex-col w-full max-w-lg h-full bg-white relative shadow-2xl overflow-hidden shadow-gray-400/20 md:border-x md:border-gray-200">
+        <Sidebar 
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          notes={notes}
+          activeNoteId={activeNoteId}
+          onSelectNote={setActiveNoteId}
+          onCreateNote={handleCreateNote}
+          onDeleteNote={handleDeleteNote}
+          user={user}
+          onLogout={handleSignOut}
+          onOpenSettings={() => { setShowThemeModal(true); setIsSidebarOpen(false); }}
+          onOpenHistory={() => { setShowHistoryModal(true); setIsSidebarOpen(false); }}
+          onOpenExport={() => { exportTriggerRef.current?.(); setIsSidebarOpen(false); }}
+        />
 
-      {/* Main area: centered card on mobile, full-width on desktop */}
-      <div className="flex flex-1 justify-center md:justify-start h-full overflow-hidden">
-        <div className="flex flex-col w-full max-w-lg md:max-w-none h-full bg-white relative shadow-2xl md:shadow-none overflow-hidden">
-          <main className="flex-1 w-full h-full relative flex flex-col">
-            {activeNoteId && activeNote ? (
-              <Calculator
-                key={activeNoteId}
-                noteId={activeNoteId}
-                title={activeNote.title}
-                initialContent={activeNote.content || ''}
-                initialDrawing={activeNote.drawing || ''}
-                onSave={handleSaveNote}
-                onMenuClick={() => setIsSidebarOpen(true)}
-                exportTriggerRef={exportTriggerRef}
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full bg-[#f2f3f5] p-6 text-center">
-                {/* Hamburger only on mobile (desktop sidebar is always visible) */}
-                <button onClick={() => setIsSidebarOpen(true)} className="md:hidden absolute top-4 left-4 p-2 text-gray-600 hover:bg-gray-200 rounded-full">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
-                </button>
-                <div className="text-gray-400 mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
-                </div>
-                <h2 className="text-xl font-medium text-gray-700 mb-2">No active scratchpad</h2>
-                <p className="text-gray-500 mb-6">Create a new scratchpad or select one from the sidebar.</p>
-                <button
-                  onClick={handleCreateNote}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow font-medium transition-colors"
-                >
-                  New Scratchpad
-                </button>
+        <main className="flex-1 w-full h-full relative flex flex-col">
+          {activeNoteId && activeNote ? (
+            <Calculator 
+              key={activeNoteId}
+              noteId={activeNoteId}
+              title={activeNote.title}
+              initialContent={activeNote.content || ''}
+              initialDrawing={activeNote.drawing || ''}
+              onSave={handleSaveNote}
+              onMenuClick={() => setIsSidebarOpen(true)}
+              exportTriggerRef={exportTriggerRef}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full bg-[#f2f3f5] p-6 text-center">
+              <button onClick={() => setIsSidebarOpen(true)} className="absolute top-4 left-4 p-2 text-gray-600 hover:bg-gray-200 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+              </button>
+              <div className="text-gray-400 mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
               </div>
-            )}
-          </main>
-        </div>
+              <h2 className="text-xl font-medium text-gray-700 mb-2">No active scratchpad</h2>
+              <p className="text-gray-500 mb-6">Create a new scratchpad or select one from the menu.</p>
+              <button 
+                onClick={handleCreateNote}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow font-medium transition-colors"
+              >
+                New Scratchpad
+              </button>
+            </div>
+          )}
+        </main>
       </div>
 
       {/* ── Global Modals ─────────────────────────────────────────────── */}

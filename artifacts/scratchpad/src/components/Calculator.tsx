@@ -341,7 +341,7 @@ export const Calculator = ({
         style={{ backgroundColor: theme.colors.calculatorBg, borderColor: theme.colors.border }}
       >
         <div className="flex items-center flex-1 mr-2 min-w-0">
-          <button onClick={onMenuClick} className="md:hidden p-2 -ml-1 rounded-full shrink-0" style={{ color: theme.colors.text }}>
+          <button onClick={onMenuClick} className="p-2 -ml-1 rounded-full shrink-0" style={{ color: theme.colors.text }}>
             <Menu size={22} />
           </button>
           <input
@@ -412,8 +412,8 @@ export const Calculator = ({
         inputMode={activeTab === 'ABC' ? 'text' : 'none'}
       />
 
-      {/* ── Keyboard panel — hidden on desktop ─────────────────────────── */}
-      <div className="shrink-0 md:hidden" style={{ backgroundColor: theme.colors.keypadBg }}>
+      {/* ── Keyboard panel ─────────────────────────────────────────────── */}
+      <div className="shrink-0" style={{ backgroundColor: theme.colors.keypadBg }}>
         {/* Tab bar */}
         <div className="flex items-center justify-between border-b" style={{ backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.border }}>
           <div className="flex">
