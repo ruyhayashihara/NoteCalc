@@ -20,6 +20,7 @@ interface EditorProps {
   theme: any;
   fontSize?: number;
   currency?: string;
+  inputMode?: "none" | "text" | "decimal" | "numeric" | "tel" | "search" | "email" | "url";
 }
 
 // ─── Result badge colours per type ───────────────────────────────────────────
@@ -37,7 +38,7 @@ function getResultColor(type: LineResult['type'], theme: any): string {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export const Editor = forwardRef<HTMLTextAreaElement, EditorProps>(
-  ({ text, onTextChange, isDrawing, canvasRef, activeTab, lineResults, onEnter, theme, fontSize = 15, currency = 'JPY' }, ref) => {
+  ({ text, onTextChange, isDrawing, canvasRef, activeTab, lineResults, onEnter, theme, fontSize = 15, currency = 'JPY', inputMode = 'none' }, ref) => {
     const currSymbol = CURRENCY_SYMBOLS[currency] ?? '';
     const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -144,6 +145,7 @@ export const Editor = forwardRef<HTMLTextAreaElement, EditorProps>(
                 caretColor: theme.colors.primary,
               }}
               spellCheck={false}
+              inputMode={inputMode}
               autoCapitalize="off"
               autoComplete="off"
               autoCorrect="off"

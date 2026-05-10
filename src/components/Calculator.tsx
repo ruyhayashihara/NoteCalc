@@ -405,6 +405,7 @@ export const Calculator = ({
         theme={theme}
         fontSize={fontSize}
         currency={currency}
+        inputMode={activeTab === 'ABC' ? 'text' : 'none'}
       />
 
       {/* ── Keyboard panel ─────────────────────────────────────────────── */}
