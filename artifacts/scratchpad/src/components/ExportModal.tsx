@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Copy, Check, Printer } from 'lucide-react';
-import { LineResult } from '../../lib/math';
+import { LineResult } from '../lib/math';
 
 interface ExportModalProps {
   text: string;

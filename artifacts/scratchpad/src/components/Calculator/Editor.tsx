@@ -18,6 +18,7 @@ interface EditorProps {
   activeTab: string;
   lineResults: LineResult[];
   onEnter: () => void;
+  onCursorMove?: () => void;
   theme: any;
   fontSize?: number;
   currency?: string;
@@ -38,8 +39,18 @@ function getResultColor(type: LineResult['type'], theme: any): string {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
+// ─── Operator glyph for CalcTape left column ─────────────────────────────────
+function getOperatorGlyph(formattedLine: string): string {
+  const trimmed = formattedLine.trimStart();
+  if (/^---/.test(trimmed) || /^===/.test(trimmed)) return '=';
+  const ch = trimmed[0];
+  if (ch === '-') return '-';
+  if (ch === 'x' || ch === '*' || ch === '÷' || ch === '/') return ch;
+  return '+';
+}
+
 export const Editor = forwardRef<HTMLTextAreaElement, EditorProps>(
-  ({ text, onTextChange, isDrawing, canvasRef, activeTab, lineResults, onEnter, theme, fontSize = 15, currency = 'JPY', inputMode = 'none' }, ref) => {
+  ({ text, onTextChange, isDrawing, canvasRef, activeTab, lineResults, onEnter, onCursorMove, theme, fontSize = 15, currency = 'JPY', inputMode = 'none' }, ref) => {
     const currSymbol = CURRENCY_SYMBOLS[currency] ?? '';
     const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -65,6 +76,8 @@ export const Editor = forwardRef<HTMLTextAreaElement, EditorProps>(
 
     const lineHeight = Math.round(fontSize * 1.75);
 
+    const OP_COL_WIDTH = 22;
+
     return (
       <div
         className="relative flex-1 overflow-hidden"
@@ -72,20 +85,24 @@ export const Editor = forwardRef<HTMLTextAreaElement, EditorProps>(
       >
         {!isDrawing ? (
           <>
-            {/* ── Overlay: line results aligned to the right ── */}
+            {/* ── Left operator column (CalcTape style) ── */}
             <div
-              ref={overlayRef}
-              className="absolute inset-0 pointer-events-none overflow-hidden"
+              className="absolute top-0 left-0 bottom-0 pointer-events-none overflow-hidden"
               style={{
-                padding: '16px 8px 16px 16px',
+                width: OP_COL_WIDTH,
+                paddingTop: 16,
                 fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
                 fontSize,
                 lineHeight: `${lineHeight}px`,
+                backgroundColor: `${theme.colors.border}30`,
+                borderRight: `1px solid ${theme.colors.border}`,
               }}
               aria-hidden="true"
             >
               {lineResults.map((res, i) => {
-                const isLast = i === lineResults.length - 1;
+                const hasValue = res.type === 'number' || res.type === 'percentage' || res.type === 'separator';
+                const glyph = hasValue ? getOperatorGlyph(res.formattedLine) : '';
+                const glyphColor = glyph === '-' ? '#e53e3e' : glyph === '=' ? theme.colors.primary : theme.colors.textSecondary;
                 return (
                   <div
                     key={i}
@@ -93,40 +110,69 @@ export const Editor = forwardRef<HTMLTextAreaElement, EditorProps>(
                       height: lineHeight,
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'flex-end',
-                      paddingRight: 4,
-                      borderBottom: res.type === 'separator' || (!isLast && res.type === 'separator')
-                        ? `1px solid ${theme.colors.border}`
-                        : 'none',
+                      justifyContent: 'center',
+                      color: glyphColor,
+                      fontWeight: 600,
+                      fontSize: fontSize - 2,
                     }}
                   >
-                    {res.formattedResult !== null && (
-                      <span
-                        style={{
-                          color: getResultColor(res.type, theme),
-                          fontSize: res.type === 'separator' ? fontSize + 1 : fontSize - 1,
-                          fontWeight: res.type === 'separator' || res.type === 'variable' ? 700 : 400,
-                          letterSpacing: 0.3,
-                          opacity: 0.85,
-                          background: res.type === 'variable'
-                            ? `${theme.colors.accent}18`
-                            : res.type === 'separator'
-                            ? `${theme.colors.primary}12`
-                            : 'transparent',
-                          borderRadius: 4,
-                          padding: res.type === 'variable' || res.type === 'separator' ? '0 6px' : 0,
-                        }}
-                      >
-                        {res.type === 'variable' && res.variableName
-                          ? `${res.variableName} = ${currSymbol}${res.formattedResult}`
-                          : res.type === 'separator'
-                          ? `${currSymbol}${res.formattedResult}`
-                          : `${currSymbol}${res.formattedResult}`}
-                      </span>
-                    )}
+                    {glyph}
                   </div>
                 );
               })}
+            </div>
+
+            {/* ── Right overlay: result values ── */}
+            <div
+              ref={overlayRef}
+              className="absolute inset-0 pointer-events-none overflow-hidden"
+              style={{
+                paddingTop: 16,
+                paddingBottom: 16,
+                paddingLeft: OP_COL_WIDTH + 8,
+                paddingRight: 8,
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                fontSize,
+                lineHeight: `${lineHeight}px`,
+              }}
+              aria-hidden="true"
+            >
+              {lineResults.map((res, i) => (
+                <div
+                  key={i}
+                  style={{
+                    height: lineHeight,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    paddingRight: 4,
+                    borderBottom: res.type === 'separator' ? `1px solid ${theme.colors.border}` : 'none',
+                  }}
+                >
+                  {res.formattedResult !== null && (
+                    <span
+                      style={{
+                        color: (res.value ?? 0) < 0 ? '#e53e3e' : getResultColor(res.type, theme),
+                        fontSize: res.type === 'separator' ? fontSize + 1 : fontSize - 1,
+                        fontWeight: res.type === 'separator' || res.type === 'variable' ? 700 : 400,
+                        letterSpacing: 0.3,
+                        opacity: 0.9,
+                        background: res.type === 'variable'
+                          ? `${theme.colors.accent}18`
+                          : res.type === 'separator'
+                          ? `${theme.colors.primary}12`
+                          : 'transparent',
+                        borderRadius: 4,
+                        padding: res.type === 'variable' || res.type === 'separator' ? '0 6px' : 0,
+                      }}
+                    >
+                      {res.type === 'variable' && res.variableName
+                        ? `${res.variableName} = ${currSymbol}${res.formattedResult}`
+                        : `${currSymbol}${res.formattedResult}`}
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
 
             {/* ── Textarea (input layer) ── */}
@@ -136,9 +182,14 @@ export const Editor = forwardRef<HTMLTextAreaElement, EditorProps>(
               onChange={(e) => onTextChange(e.target.value)}
               onKeyDown={handleKeyDown}
               onScroll={handleScroll}
+              onKeyUp={onCursorMove}
+              onClick={onCursorMove}
               className="absolute inset-0 w-full h-full resize-none outline-none bg-transparent"
               style={{
-                padding: '16px 120px 16px 16px',
+                paddingTop: 16,
+                paddingBottom: 16,
+                paddingLeft: OP_COL_WIDTH + 8,
+                paddingRight: 120,
                 fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
                 fontSize,
                 lineHeight: `${lineHeight}px`,

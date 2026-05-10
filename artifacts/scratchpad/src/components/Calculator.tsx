@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { evaluateNotes, formatTotal } from '../lib/math';
-import { RotateCcw, Menu, Keyboard, Check, Loader2, ZoomIn, ZoomOut, Download, Settings2 } from 'lucide-react';
+import { RotateCcw, Menu, Keyboard, Check, Loader2, ZoomIn, ZoomOut, Download, Settings2, ChevronDown } from 'lucide-react';
 import { useCalculatorHistory } from '../hooks/useCalculatorHistory';
 import { useTheme } from '../contexts/ThemeContext';
 import { useHistory } from '../contexts/HistoryContext';
 import { Editor } from './Calculator/Editor';
 import { VirtualKeyboard } from './Calculator/VirtualKeyboard';
+import { CalcTapeNumpad } from './Calculator/CalcTapeNumpad';
 import { ExportModal } from './ExportModal';
 import { motion, AnimatePresence } from 'motion/react';
 import type { DrawingCanvasHandle } from './Calculator/DrawingCanvas';
@@ -121,12 +122,13 @@ export const Calculator = ({
   const [memory, setMemory]                   = useState(0);
   const [angleMode, setAngleMode]             = useState<'deg' | 'rad'>('deg');
   const [activeTab, setActiveTab]             = useState('K1');
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(true);
+  const [showAdvancedKb, setShowAdvancedKb]   = useState(false);
   const [isSaving, setIsSaving]               = useState(false);
   const [showSaved, setShowSaved]             = useState(false);
   const [fontSize, setFontSize]               = useState(15);
   const [showExport, setShowExport]           = useState(false);
   const [showSettings, setShowSettings]       = useState(false);
+  const [cursorPos, setCursorPos]             = useState({ line: 1, col: 1 });
 
   // Tape settings — persisted per device
   const [currency, setCurrencyState]          = useState(() => localStorage.getItem('calc-currency') || 'JPY');
@@ -330,50 +332,66 @@ export const Calculator = ({
     if (tab !== 'DRAW') setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
-  const TABS = ['K1', 'K2', 'NAV', 'PRG', 'ABC', 'DRAW'];
+  const ADV_TABS = ['K2', 'NAV', 'PRG', 'ABC', 'DRAW'];
+
+  const handleCursorMove = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const before = el.value.substring(0, el.selectionStart);
+    const lines = before.split('\n');
+    setCursorPos({ line: lines.length, col: lines[lines.length - 1].length + 1 });
+  };
 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: theme.colors.calculatorBg }}>
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
+      {/* ── Header toolbar ─────────────────────────────────────────────── */}
       <div
-        className="flex items-center justify-between px-3 py-2 border-b shrink-0 z-10"
-        style={{ backgroundColor: theme.colors.calculatorBg, borderColor: theme.colors.border }}
+        className="flex items-center justify-between px-2 py-1.5 border-b shrink-0 z-10 gap-1"
+        style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}
       >
-        <div className="flex items-center flex-1 mr-2 min-w-0">
-          <button onClick={onMenuClick} className="p-2 -ml-1 rounded-full shrink-0" style={{ color: theme.colors.text }}>
-            <Menu size={22} />
+        {/* Left: menu + title */}
+        <div className="flex items-center flex-1 min-w-0 mr-1">
+          <button onClick={onMenuClick} className="p-1.5 rounded shrink-0" style={{ color: theme.colors.textSecondary }} title="Menu">
+            <Menu size={18} />
           </button>
           <input
             value={localTitle}
             onChange={(e) => setLocalTitle(e.target.value)}
-            className="ml-1 w-full text-base font-medium bg-transparent border-none outline-none focus:bg-white/10 rounded px-1 py-0.5 transition-colors placeholder-gray-400 truncate"
+            className="ml-1 w-full text-sm font-medium bg-transparent border-none outline-none focus:bg-white/10 rounded px-1 py-0.5 transition-colors placeholder-gray-400 truncate"
             style={{ color: theme.colors.text }}
             placeholder="Note name…"
           />
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
-          {/* Zoom */}
-          <button onClick={() => setFontSize(f => Math.max(11, f - 2))} className="p-1.5 rounded-lg active:opacity-70" style={{ color: theme.colors.textSecondary }} title="Zoom out (Ctrl+1)">
-            <ZoomOut size={17} />
+        {/* Right: toolbar actions */}
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button onClick={() => undo()} disabled={!canUndo} className="p-1.5 rounded active:opacity-70 disabled:opacity-30" style={{ color: theme.colors.textSecondary }} title="Undo (Ctrl+Z)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
           </button>
-          <button onClick={() => setFontSize(f => Math.min(22, f + 2))} className="p-1.5 rounded-lg active:opacity-70" style={{ color: theme.colors.textSecondary }} title="Zoom in (Ctrl+2)">
-            <ZoomIn size={17} />
+          <button onClick={() => redo()} disabled={!canRedo} className="p-1.5 rounded active:opacity-70 disabled:opacity-30" style={{ color: theme.colors.textSecondary }} title="Redo (Ctrl+Y)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 3.7"/></svg>
           </button>
-          {/* Export */}
-          <button onClick={() => setShowExport(true)} className="p-1.5 rounded-lg active:opacity-70" style={{ color: theme.colors.textSecondary }} title="Export">
-            <Download size={17} />
+          <div className="w-px h-4 mx-0.5" style={{ backgroundColor: theme.colors.border }} />
+          <button onClick={() => setFontSize(f => Math.max(11, f - 2))} className="p-1.5 rounded active:opacity-70" style={{ color: theme.colors.textSecondary }} title="Zoom out (Ctrl+1)">
+            <ZoomOut size={16} />
           </button>
-          {/* Settings */}
-          <button onClick={() => setShowSettings(true)} className="p-1.5 rounded-lg active:opacity-70" style={{ color: theme.colors.textSecondary }} title="Tape settings">
-            <Settings2 size={17} />
+          <button onClick={() => setFontSize(f => Math.min(22, f + 2))} className="p-1.5 rounded active:opacity-70" style={{ color: theme.colors.textSecondary }} title="Zoom in (Ctrl+2)">
+            <ZoomIn size={16} />
           </button>
+          <div className="w-px h-4 mx-0.5" style={{ backgroundColor: theme.colors.border }} />
+          <button onClick={() => setShowExport(true)} className="p-1.5 rounded active:opacity-70" style={{ color: theme.colors.textSecondary }} title="Export">
+            <Download size={16} />
+          </button>
+          <button onClick={() => setShowSettings(true)} className="p-1.5 rounded active:opacity-70" style={{ color: theme.colors.textSecondary }} title="Tape settings">
+            <Settings2 size={16} />
+          </button>
+          <div className="w-px h-4 mx-0.5" style={{ backgroundColor: theme.colors.border }} />
           {/* Save */}
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="relative flex items-center justify-center min-w-[68px] h-9 px-3 rounded-lg font-semibold text-sm transition-colors overflow-hidden"
+            className="relative flex items-center justify-center min-w-[60px] h-8 px-2.5 rounded font-semibold text-xs transition-colors overflow-hidden"
             style={{
               backgroundColor: showSaved ? '#dcfce7' : `${theme.colors.primary}15`,
               color: showSaved ? '#15803d' : theme.colors.primary,
@@ -382,11 +400,11 @@ export const Calculator = ({
             <AnimatePresence mode="wait">
               {isSaving ? (
                 <motion.div key="s" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <Loader2 size={16} className="animate-spin" />
+                  <Loader2 size={14} className="animate-spin" />
                 </motion.div>
               ) : showSaved ? (
                 <motion.div key="ok" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-1">
-                  <Check size={15} /><span>Saved</span>
+                  <Check size={13} /><span>Saved</span>
                 </motion.div>
               ) : (
                 <motion.span key="sv" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>Save</motion.span>
@@ -396,97 +414,116 @@ export const Calculator = ({
         </div>
       </div>
 
-      {/* ── Editor area ────────────────────────────────────────────────── */}
-      <Editor
-        ref={textareaRef}
-        text={text}
-        onTextChange={updateText}
-        isDrawing={isDrawing}
-        canvasRef={canvasRef}
-        activeTab={activeTab}
-        lineResults={lineResults}
-        onEnter={() => handleKeyPress('↵')}
-        theme={theme}
-        fontSize={fontSize}
-        currency={currency}
-        inputMode={activeTab === 'ABC' ? 'text' : 'none'}
-      />
+      {/* ── Main area: Editor + Side Numpad ─────────────────────────────── */}
+      <div className="flex flex-1 min-h-0">
+        {/* Editor (tape) */}
+        <div className="flex flex-col flex-1 min-w-0">
+          <Editor
+            ref={textareaRef}
+            text={text}
+            onTextChange={updateText}
+            isDrawing={isDrawing}
+            canvasRef={canvasRef}
+            activeTab={activeTab}
+            lineResults={lineResults}
+            onEnter={() => handleKeyPress('↵')}
+            onCursorMove={handleCursorMove}
+            theme={theme}
+            fontSize={fontSize}
+            currency={currency}
+            inputMode="text"
+          />
 
-      {/* ── Keyboard panel ─────────────────────────────────────────────── */}
-      <div className="shrink-0" style={{ backgroundColor: theme.colors.keypadBg }}>
-        {/* Tab bar */}
-        <div className="flex items-center justify-between border-b" style={{ backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.border }}>
-          <div className="flex">
-            {TABS.map(t => (
-              <button
-                key={t}
-                onClick={() => handleTabClick(t)}
-                className="px-3 py-2.5 text-xs font-bold tracking-wide transition-colors border-r"
-                style={{
-                  backgroundColor: activeTab === t ? theme.colors.keyOperator : 'transparent',
-                  color: activeTab === t ? theme.colors.text : theme.colors.textSecondary,
-                  borderColor: theme.colors.border,
-                }}
-              >
-                {t}
-              </button>
-            ))}
-            <button
-              onClick={() => setIsKeyboardVisible(v => !v)}
-              className="px-3 py-2.5 flex items-center justify-center transition-colors border-r"
-              style={{
-                backgroundColor: !isKeyboardVisible ? `${theme.colors.primary}22` : 'transparent',
-                color: !isKeyboardVisible ? theme.colors.primary : theme.colors.textSecondary,
-                borderColor: theme.colors.border,
-              }}
+          {/* Advanced keyboard panel (collapsible, for K2/NAV/PRG/ABC/DRAW) */}
+          <div className="shrink-0" style={{ backgroundColor: theme.colors.keypadBg }}>
+            {/* Tab strip */}
+            <div
+              className="flex items-center border-t border-b"
+              style={{ backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.border }}
             >
-              <Keyboard size={16} />
-            </button>
-          </div>
-
-          {/* Total display */}
-          <div className="flex items-center pr-3 gap-2">
-            {memory !== 0 && (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold animate-pulse" style={{ backgroundColor: `${theme.colors.primary}25`, color: theme.colors.primary }}>M</span>
-            )}
-            {isDrawing && (
-              <button onClick={() => canvasRef.current?.undo()} className="p-1.5 rounded transition-colors" style={{ color: theme.colors.textSecondary }}>
-                <RotateCcw size={16} />
+              <button
+                onClick={() => setShowAdvancedKb(v => !v)}
+                className="flex items-center gap-1 px-2 py-2 text-xs font-bold border-r"
+                style={{ color: theme.colors.textSecondary, borderColor: theme.colors.border }}
+                title="Advanced keyboard"
+              >
+                <Keyboard size={14} />
+                <ChevronDown size={12} style={{ transform: showAdvancedKb ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
               </button>
-            )}
-            <span className="font-bold text-lg tracking-tight" style={{ color: theme.colors.text }}>
-              {formatTotal(total, currency)}
-            </span>
+              {ADV_TABS.map(t => (
+                <button
+                  key={t}
+                  onClick={() => { handleTabClick(t); setShowAdvancedKb(true); }}
+                  className="px-2.5 py-2 text-xs font-bold tracking-wide transition-colors border-r"
+                  style={{
+                    backgroundColor: showAdvancedKb && activeTab === t ? theme.colors.keyOperator : 'transparent',
+                    color: showAdvancedKb && activeTab === t ? theme.colors.text : theme.colors.textSecondary,
+                    borderColor: theme.colors.border,
+                  }}
+                >
+                  {t}
+                </button>
+              ))}
+              {/* Drawing undo */}
+              {isDrawing && (
+                <button onClick={() => canvasRef.current?.undo()} className="ml-auto px-2 py-2" style={{ color: theme.colors.textSecondary }}>
+                  <RotateCcw size={14} />
+                </button>
+              )}
+              {memory !== 0 && (
+                <span className="ml-auto mr-2 px-1.5 py-0.5 rounded text-[10px] font-bold animate-pulse" style={{ backgroundColor: `${theme.colors.primary}25`, color: theme.colors.primary }}>M</span>
+              )}
+            </div>
+
+            <AnimatePresence>
+              {showAdvancedKb && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.18, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  {activeTab !== 'ABC' && activeTab !== 'DRAW' && (
+                    <VirtualKeyboard
+                      activeTab={activeTab}
+                      onKeyPress={handleKeyPress}
+                      onNavAction={handleNavKeyPress}
+                    />
+                  )}
+                  {activeTab === 'ABC' && (
+                    <div className="py-6 flex flex-col items-center justify-center" style={{ color: theme.colors.textSecondary }}>
+                      <Keyboard size={32} className="mb-2 opacity-20" />
+                      <p className="text-xs">Use your keyboard to type</p>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
-        {/* Keyboard body */}
-        <AnimatePresence>
-          {isKeyboardVisible && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-              className="overflow-hidden"
-            >
-              {activeTab !== 'ABC' && activeTab !== 'DRAW' && (
-                <VirtualKeyboard
-                  activeTab={activeTab}
-                  onKeyPress={handleKeyPress}
-                  onNavAction={handleNavKeyPress}
-                />
-              )}
+        {/* CalcTape-style side numpad */}
+        <CalcTapeNumpad
+          onKeyPress={handleKeyPress}
+          onNavAction={handleNavKeyPress}
+          total={total}
+          memory={memory}
+          currency={currency}
+          formatTotalFn={formatTotal}
+        />
+      </div>
 
-              {activeTab === 'ABC' && (
-                <div className="py-10 flex flex-col items-center justify-center" style={{ color: theme.colors.textSecondary }}>
-                  <Keyboard size={40} className="mb-3 opacity-20" />
-                  <p className="text-sm">Use your device's keyboard to type</p>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* ── Status bar ─────────────────────────────────────────────────── */}
+      <div
+        className="flex items-center px-3 py-1 border-t text-[11px] shrink-0 gap-3"
+        style={{ backgroundColor: theme.colors.surfaceSecondary, borderColor: theme.colors.border, color: theme.colors.textSecondary }}
+      >
+        <span>Memory: {memory === 0 ? '0.00' : formatTotal(memory, currency)}</span>
+        <span>|</span>
+        <span>Zoom: {Math.round((fontSize / 15) * 100)}%</span>
+        <span>|</span>
+        <span>Cursor: {cursorPos.line}:{cursorPos.col}</span>
       </div>
 
       {/* ── Modals ─────────────────────────────────────────────────────── */}
