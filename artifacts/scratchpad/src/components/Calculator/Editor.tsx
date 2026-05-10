@@ -1,5 +1,6 @@
-import { forwardRef, useEffect, useRef } from 'react';
+import { forwardRef, useEffect } from 'react';
 import { LineResult } from '../../lib/math';
+import { DrawingCanvas, DrawingCanvasHandle } from './DrawingCanvas';
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   none: '',
@@ -152,11 +153,7 @@ export const Editor = forwardRef<HTMLTextAreaElement, EditorProps>(
             />
           </>
         ) : (
-          <canvas
-            ref={canvasRef}
-            className="absolute inset-0 w-full h-full touch-none cursor-crosshair"
-            style={{ backgroundColor: theme.colors.surface }}
-          />
+          <DrawingCanvas ref={canvasRef as React.RefObject<DrawingCanvasHandle>} theme={theme} />
         )}
       </div>
     );

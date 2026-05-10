@@ -3,10 +3,12 @@ import { evaluateNotes, formatTotal } from '../lib/math';
 import { RotateCcw, Menu, Keyboard, Check, Loader2, ZoomIn, ZoomOut, Download, Settings2 } from 'lucide-react';
 import { useCalculatorHistory } from '../hooks/useCalculatorHistory';
 import { useTheme } from '../contexts/ThemeContext';
+import { useHistory } from '../contexts/HistoryContext';
 import { Editor } from './Calculator/Editor';
 import { VirtualKeyboard } from './Calculator/VirtualKeyboard';
 import { ExportModal } from './ExportModal';
 import { motion, AnimatePresence } from 'motion/react';
+import type { DrawingCanvasHandle } from './Calculator/DrawingCanvas';
 
 // ─── Settings Panel ───────────────────────────────────────────────────────────
 
@@ -109,6 +111,7 @@ export const Calculator = ({
   initialContent, initialDrawing, onSave, onMenuClick, title, noteId, exportTriggerRef,
 }: CalculatorProps) => {
   const { theme } = useTheme();
+  const { addToHistory } = useHistory();
   const { text, setText, updateText, undo, redo, resetHistory, canUndo, canRedo } = useCalculatorHistory(initialContent);
 
   const [localTitle, setLocalTitle]           = useState(title);
@@ -133,7 +136,7 @@ export const Calculator = ({
   const setDecimalPlaces = (d: number) => { setDecimalPlacesState(d); localStorage.setItem('calc-decimals', String(d)); };
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const canvasRef   = useRef<any>(null);
+  const canvasRef   = useRef<DrawingCanvasHandle>(null);
   const autosaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isDrawing = activeTab === 'DRAW';
@@ -306,11 +309,12 @@ export const Calculator = ({
     setIsSaving(true);
     let drawingData = initialDrawing;
     if (isDrawing && canvasRef.current) {
-      const paths = await canvasRef.current.exportPaths();
+      const paths = canvasRef.current.exportPaths();
       drawingData = JSON.stringify(paths);
     }
     try {
       await onSave(text, drawingData, localTitle);
+      addToHistory(text, total, localTitle);
       // Clear draft after successful save
       try { localStorage.removeItem(`notecalc-draft-${noteId}`); } catch {}
       setIsSaving(false);
@@ -326,7 +330,7 @@ export const Calculator = ({
     if (tab !== 'DRAW') setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
-  const TABS = ['K1', 'K2', 'NAV', 'PRG', 'ABC'];
+  const TABS = ['K1', 'K2', 'NAV', 'PRG', 'ABC', 'DRAW'];
 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: theme.colors.calculatorBg }}>

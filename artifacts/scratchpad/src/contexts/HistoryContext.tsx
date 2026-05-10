@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
 export interface HistoryEntry {
   id: string;
@@ -41,9 +41,9 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
   const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(false);
 
   // Save to localStorage whenever history changes
-  useState(() => {
+  useEffect(() => {
     localStorage.setItem('calc-history', JSON.stringify(history));
-  });
+  }, [history]);
 
   const addToHistory = useCallback((content: string, total: number, title?: string) => {
     const newEntry: HistoryEntry = {
