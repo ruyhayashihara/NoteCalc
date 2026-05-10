@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { VitePWA } from "vite-plugin-pwa";
 
 const rawPort = process.env.PORT;
 
@@ -32,6 +33,19 @@ export default defineConfig({
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['icon.svg'],
+      manifest: {
+        name: 'Scratchpad Calculator',
+        short_name: 'Scratchpad',
+        description: 'Calculate, take notes, and draw.',
+        theme_color: '#f2f3f5',
+        background_color: '#f2f3f5',
+        display: 'standalone',
+        icons: [{ src: 'icon.svg', sizes: '192x192 512x512', type: 'image/svg+xml' }],
+      },
+    }),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
