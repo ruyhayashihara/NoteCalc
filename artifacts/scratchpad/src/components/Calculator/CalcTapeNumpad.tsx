@@ -86,9 +86,11 @@ export const CalcTapeNumpad = ({
 
   return (
     <div
-      className="flex flex-col shrink-0 border-l"
+      className="hidden md:flex flex-col shrink-0 border-l h-full"
       style={{
-        width: 188,
+        width: '20vw',
+        minWidth: 200,
+        maxWidth: '20vw',
         backgroundColor: theme.colors.keypadBg,
         borderColor: theme.colors.border,
       }}
@@ -108,7 +110,7 @@ export const CalcTapeNumpad = ({
 
       {/* Numpad grid — 4 columns */}
       <div
-        className="grid flex-1"
+        className="grid flex-1 min-h-0"
         style={{
           gridTemplateColumns: 'repeat(4, 1fr)',
           gridAutoRows: '1fr',
