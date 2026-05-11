@@ -297,6 +297,12 @@ export const Calculator = ({
       case 'Right':  el.setSelectionRange(Math.min(text.length, start + 1), Math.min(text.length, start + 1)); break;
       case 'Up': { const ls = text.substring(0, start).split('\n'); if (ls.length > 1) { const p = start - ls[ls.length - 1].length - 1; el.setSelectionRange(p, p); } else el.setSelectionRange(0, 0); break; }
       case 'Down': { const la = text.substring(start).split('\n'); if (la.length > 1) { const p = start + la[0].length + 1; el.setSelectionRange(p, p); } else el.setSelectionRange(text.length, text.length); break; }
+      case 'Enter': {
+        const next = text.substring(0, start) + '\n' + text.substring(end);
+        updateText(next);
+        setTimeout(() => el.setSelectionRange(start + 1, start + 1), 0);
+        break;
+      }
       case 'Top':    el.setSelectionRange(0, 0); break;
       case 'Bottom': el.setSelectionRange(text.length, text.length); break;
       case 'Undo':   undo(); break;

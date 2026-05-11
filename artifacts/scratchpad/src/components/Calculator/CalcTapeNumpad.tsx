@@ -18,6 +18,14 @@ interface NKey {
   display?: React.ReactNode;
 }
 
+const ENTER_ICON = (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="9 10 4 15 9 20" />
+    <path d="M20 4v7a4 4 0 0 1-4 4H4" />
+  </svg>
+);
+
 const BACKSPACE_ICON = (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -146,7 +154,8 @@ export const CalcTapeNumpad = ({
         {btn('MR',   'memory',   <span className="text-xs font-bold">MR<br/><span style={{fontSize:'0.6rem',opacity:0.6}}>0,00</span></span>, 1, 1)}
         {btn('MC',   'memory',   'MC', 1, 1)}
 
-        {btn('+TAX', 'tax',      '+TAX', 1, 2)}
+        {btn('+TAX', 'tax',      '+TAX', 1, 1)}
+        {btn('↵',    'tax',      ENTER_ICON, 1, 1, 'Enter')}
         {btn('-TAX', 'tax',      '-TAX', 1, 2)}
       </div>
     </div>
