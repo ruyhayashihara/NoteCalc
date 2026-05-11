@@ -296,7 +296,7 @@ function AppContent() {
 
   return (
     <div className="flex justify-center flex-1 h-screen w-full bg-gray-100 overflow-hidden font-sans">
-      <div className="flex flex-col w-full max-w-lg h-full bg-white relative shadow-2xl overflow-hidden shadow-gray-400/20 md:border-x md:border-gray-200">
+      <div className="flex flex-col w-full h-full bg-white relative shadow-2xl overflow-hidden shadow-gray-400/20 md:max-w-none lg:max-w-none">
         <Sidebar 
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
