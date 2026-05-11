@@ -25,7 +25,7 @@ export const VirtualKeyboard = ({ activeTab, onKeyPress, onNavAction }: VirtualK
       ['Inv', 'sin', 'ln',  '7', '8', '9', '÷'],
       ['π',   'cos', 'log', '4', '5', '6', 'x'],
       ['e',   'tan', '√',   '1', '2', '3', '-'],
-      ['Ans', 'EXP', 'xʸ',  '0', '.', '=', '+'],
+      ['Ans', 'EXP', 'xʸ',  '0', '.', '=', '+', '↵'],
     ],
   };
 
@@ -99,10 +99,16 @@ export const VirtualKeyboard = ({ activeTab, onKeyPress, onNavAction }: VirtualK
 
   // ── K1 / K2 tabs ─────────────────────────────────────────────────────────
   const currentLayout = layouts[activeTab as keyof typeof layouts] || layouts.K1;
-  const gridCols = activeTab === 'K2' ? 'grid-cols-7' : 'grid-cols-4';
+  const gridCols = activeTab === 'K2' ? 'grid-cols-8' : 'grid-cols-4';
 
   return (
-    <div className={`grid ${gridCols} select-none`} style={{ backgroundColor: activeTab === 'K2' ? theme.colors.surfaceSecondary : theme.colors.keypadBg }}>
+    <div
+      className={`grid ${gridCols} select-none`}
+      style={{
+        backgroundColor: activeTab === 'K2' ? theme.colors.surfaceSecondary : theme.colors.keypadBg,
+        gridAutoRows: activeTab === 'K2' ? 'minmax(44px, 1fr)' : undefined,
+      }}
+    >
       {currentLayout.flat().map((btnLabel, idx) => (
         <Key
           key={`${activeTab}-${idx}`}
