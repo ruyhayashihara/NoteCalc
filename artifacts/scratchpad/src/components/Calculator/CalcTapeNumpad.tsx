@@ -142,12 +142,12 @@ export const CalcTapeNumpad = ({
         {btn('1',    'number',   undefined, 1, 1)}
         {btn('2',    'number',   undefined, 1, 1)}
         {btn('3',    'number',   undefined, 1, 1)}
-        {/* = spans 2 rows */}
-        {btn('=',    'eq',       undefined, 2, 1)}
+        {btn('=',    'eq',       undefined, 1, 1)}
 
         {btn('0',    'number',   undefined, 1, 1)}
         {btn('.',    'number',   undefined, 1, 1)}
         {btn('%',    'operator', undefined, 1, 1)}
+        {btn('↵',    'tax',      ENTER_ICON, 1, 1, 'Enter')}
 
         {btn('M+',   'memory',   <span className="text-xs">M+<br/><span style={{fontSize:'0.6rem',opacity:0.6}}>+0,00</span></span>, 1, 1)}
         {btn('M-',   'memory',   <span className="text-xs">M-<br/><span style={{fontSize:'0.6rem',opacity:0.6}}>+0,00</span></span>, 1, 1)}
@@ -155,8 +155,7 @@ export const CalcTapeNumpad = ({
         {btn('MC',   'memory',   'MC', 1, 1)}
 
         {btn('+TAX', 'tax',      '+TAX', 1, 1)}
-        {btn('↵',    'tax',      ENTER_ICON, 1, 1, 'Enter')}
-        {btn('-TAX', 'tax',      '-TAX', 1, 2)}
+        {btn('-TAX', 'tax',      '-TAX', 1, 1)}
       </div>
     </div>
   );
